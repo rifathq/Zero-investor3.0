@@ -1,0 +1,517 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Default Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email in ['rifathq4637@gmail.com', 'r4d.4637@gmail.com', 'moonlit4637@gmail.com', 'admin@zeroinvest.com'] ||
+        (request.auth.token.email != null && request.auth.token.email.matches('.*admin.*')) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Connection test document for health checks
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // Admin whitelist collection
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Validation helper for UserProfile
+    function isValidUserProfile(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.firebaseUid is string && data.firebaseUid.size() <= 128 &&
+             data.email is string && data.email.size() <= 254 &&
+             (data.role in ['customer', 'seller', 'reseller', 'admin']) &&
+             (data.status in ['active', 'suspended', 'pending']) &&
+             data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    // Validation helper for ProductReview
+    function isValidProductReview(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.productId is string && data.productId.size() <= 128 &&
+             data.author is string && data.author.size() <= 100 &&
+             data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.comment is string && data.comment.size() <= 2000 &&
+             data.verifiedPurchase is bool &&
+             data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    // Validation helper for ResellerApplication
+    function isValidResellerApplication(data) {
+      return (data.uid is string || data.userId is string) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 150 &&
+             data.whatsapp is string && data.whatsapp.size() >= 10 && data.whatsapp.size() <= 30 &&
+             data.salesChannel is string && data.salesChannel.size() > 0 && data.salesChannel.size() <= 100 &&
+             data.pageUrl is string && data.pageUrl.size() > 0 && data.pageUrl.size() <= 500 &&
+             data.estimatedVolume is string && data.estimatedVolume.size() > 0 && data.estimatedVolume.size() <= 100 &&
+             data.district is string && data.district.size() > 0 && data.district.size() <= 100 &&
+             (data.status in ['pending', 'approved', 'rejected']);
+    }
+
+    // User profile documents
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().firebaseUid == request.auth.uid &&
+                       incoming().id == request.auth.uid &&
+                       isValidUserProfile(incoming()) &&
+                       (incoming().role in ['customer', 'seller', 'reseller'] || isAdmin());
+
+      allow update: if isValidId(userId) && (
+                       isAdmin() ||
+                       (isOwner(userId) && (incoming().role == existing().role || isAdmin()))
+                     );
+
+      allow delete: if isAdmin();
+    }
+
+    // Product reviews collection
+    match /reviews/{reviewId} {
+      allow read: if true;
+      
+      allow create: if isValidId(reviewId) &&
+                       incoming().id == reviewId &&
+                       isValidProductReview(incoming()) &&
+                       (isSignedIn() ? incoming().userId == request.auth.uid : incoming().verifiedPurchase == true);
+
+      allow update: if isValidId(reviewId) &&
+                       incoming().id == existing().id &&
+                       incoming().productId == existing().productId &&
+                       isValidProductReview(incoming()) &&
+                       (isSignedIn() && (existing().userId == request.auth.uid || isAdmin()));
+
+      allow delete: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    // ==========================================
+    // RESELLER PLATFORM: STORES
+    // ==========================================
+    function isValidResellerStore(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.resellerId is string && data.resellerId.size() <= 128 &&
+             data.storeName is string && data.storeName.size() > 0 && data.storeName.size() <= 100 &&
+             data.storeSlug is string && data.storeSlug.size() > 0 && data.storeSlug.size() <= 100 &&
+             data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    match /reseller_stores/{storeId} {
+      // Public read so visitors can access public store /r/{storeSlug} or /store/{storeSlug}
+      allow read: if true;
+
+      // Reseller can create their store
+      allow create: if isSignedIn() &&
+                       isValidId(storeId) &&
+                       incoming().id == storeId &&
+                       incoming().resellerId == request.auth.uid &&
+                       isValidResellerStore(incoming());
+
+      // Owner can update their store; cannot change store ID or owner resellerId
+      allow update: if (isSignedIn() && existing().resellerId == request.auth.uid && incoming().resellerId == existing().resellerId && isValidResellerStore(incoming())) || isAdmin();
+
+      // Owner or Admin can delete store
+      allow delete: if (isSignedIn() && existing().resellerId == request.auth.uid) || isAdmin();
+    }
+
+    // ==========================================
+    // PLATFORM / ADMIN PRODUCTS CATALOG
+    // Full admin control: resellers cannot create or modify platform products
+    // ==========================================
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // PLATFORM / ADMIN CATEGORIES CATALOG
+    // Public read, full admin write/reorder control
+    // Resellers cannot alter platform categories
+    // ==========================================
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // RESELLER PLATFORM: PRODUCTS
+    // Reseller can only configure selling price & active status for catalog products
+    // ==========================================
+    function isValidResellerProduct(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.resellerId is string && data.resellerId.size() <= 128 &&
+             data.originalProductId is string && data.originalProductId.size() <= 128 &&
+             ((('sellingPriceBDT' in data) && data.sellingPriceBDT is number && data.sellingPriceBDT >= 0) ||
+              (('suggestedPrice' in data) && data.suggestedPrice is number && data.suggestedPrice >= 0) ||
+              (('sellingPrice' in data) && data.sellingPrice is number && data.sellingPrice >= 0)) &&
+             data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    match /reseller_products/{productId} {
+      // Public read for customer storefront browsing
+      allow read: if true;
+
+      // Reseller can only create product configuration referencing an existing catalog product
+      allow create: if isSignedIn() &&
+                       isValidId(productId) &&
+                       incoming().id == productId &&
+                       incoming().resellerId == request.auth.uid &&
+                       isValidResellerProduct(incoming());
+
+      // Owner can ONLY update their selling price and active status
+      // Immutable: originalProductId, resellerId, storeId, supplier base cost, product identity, images, and descriptions
+      allow update: if (isSignedIn() && 
+                        existing().resellerId == request.auth.uid && 
+                        incoming().resellerId == existing().resellerId && 
+                        incoming().originalProductId == existing().originalProductId &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['sellingPrice', 'sellingPriceBDT', 'suggestedPrice', 'potentialProfit', 'isActive', 'status', 'updatedAt']) &&
+                        isValidResellerProduct(incoming())) || isAdmin();
+
+      // Owner or Admin can delete from reseller store
+      allow delete: if (isSignedIn() && existing().resellerId == request.auth.uid) || isAdmin();
+    }
+
+    // ==========================================
+    // RESELLER PLATFORM: LANDING PAGES
+    // ==========================================
+    function isValidResellerLandingPage(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.resellerId is string && data.resellerId.size() <= 128 &&
+             data.storeSlug is string && data.storeSlug.size() > 0 && data.storeSlug.size() <= 100 &&
+             data.productSlug is string && data.productSlug.size() > 0 && data.productSlug.size() <= 100 &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 255 &&
+             data.sellingPriceBDT is number && data.sellingPriceBDT >= 0 &&
+             (data.status in ['draft', 'published', 'archived']) &&
+             data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    match /reseller_landing_pages/{landingPageId} {
+      // Public read so customer on any device can view published landing pages
+      allow read: if true;
+
+      // Reseller creates landing page
+      allow create: if isSignedIn() &&
+                       isValidId(landingPageId) &&
+                       incoming().id == landingPageId &&
+                       incoming().resellerId == request.auth.uid &&
+                       isValidResellerLandingPage(incoming());
+
+      // Reseller updates landing page, or customer order triggers order count bump
+      allow update: if (isSignedIn() && existing().resellerId == request.auth.uid && incoming().resellerId == existing().resellerId && isValidResellerLandingPage(incoming())) ||
+                       (incoming().diff(existing()).affectedKeys().hasOnly(['ordersCount']) &&
+                        incoming().ordersCount == existing().ordersCount + 1 &&
+                        incoming().resellerId == existing().resellerId) ||
+                       isAdmin();
+
+      // Owner or Admin can delete
+      allow delete: if (isSignedIn() && existing().resellerId == request.auth.uid) || isAdmin();
+    }
+
+    // ==========================================
+    // ORDERS: MARKETPLACE & RESELLER
+    // ==========================================
+    function isValidOrder(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.orderNumber is string && data.orderNumber.size() > 0 && data.orderNumber.size() <= 64 &&
+             data.customerName is string && data.customerName.size() > 0 && data.customerName.size() <= 150 &&
+             data.customerPhone is string && data.customerPhone.size() > 0 && data.customerPhone.size() <= 30 &&
+             data.items is list && data.items.size() > 0 &&
+             data.totalAmountBDT is number && data.totalAmountBDT >= 0 &&
+             (data.status in ['Pending', 'Confirmed', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Returned']) &&
+             data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    match /orders/{orderId} {
+      // Read: Reseller sees orders assigned to them; Customer sees their own orders; Admin sees all
+      allow read: if (isSignedIn() && (
+                       (resource.data.resellerId != null && resource.data.resellerId == request.auth.uid) ||
+                       (resource.data.customerId != null && resource.data.customerId == request.auth.uid) ||
+                       isAdmin()
+                     )) || (!isSignedIn()); // Allow read by ID for guest order tracking
+
+      // Create: Authenticated customer or public guest customer on reseller store / landing page
+      // Order must start in Pending status and unsettled profit
+      allow create: if isValidId(orderId) &&
+                       incoming().id == orderId &&
+                       incoming().status == 'Pending' &&
+                       incoming().isSettled == false &&
+                       isValidOrder(incoming()) &&
+                       (isSignedIn() ? incoming().customerId == request.auth.uid : true);
+
+      // Update: Exclusively restricted to Admin accounts (Resellers & Customers are read-only)
+      allow update: if isAdmin();
+
+      // Delete: Admin only
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // RESELLER WALLET & TRANSACTIONS
+    // ==========================================
+    function isValidResellerWallet(data) {
+      return data.resellerId is string && data.resellerId.size() <= 128 &&
+             data.availableBalanceBDT is number && data.availableBalanceBDT >= 0 &&
+             data.pendingBalanceBDT is number && data.pendingBalanceBDT >= 0 &&
+             data.totalEarningsBDT is number && data.totalEarningsBDT >= 0 &&
+             data.totalWithdrawnBDT is number && data.totalWithdrawnBDT >= 0 &&
+             data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    match /reseller_wallets/{resellerId} {
+      // Only owner or Admin can read wallet balance
+      allow read: if isOwner(resellerId) || isAdmin();
+
+      // Owner can initialize their wallet with zero balances
+      allow create: if isOwner(resellerId) &&
+                       incoming().resellerId == request.auth.uid &&
+                       incoming().availableBalanceBDT == 0 &&
+                       incoming().pendingBalanceBDT == 0 &&
+                       incoming().totalEarningsBDT == 0 &&
+                       incoming().totalWithdrawnBDT == 0 &&
+                       isValidResellerWallet(incoming());
+
+      // Wallet balance mutations are strictly server-side / admin controlled.
+      // Normal resellers CANNOT directly update wallet balances from the client SDK!
+      allow update: if isAdmin();
+
+      allow delete: if isAdmin();
+    }
+
+    function isValidWalletTransaction(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.resellerId is string && data.resellerId.size() <= 128 &&
+             (data.type in ['Product Profit', 'Order Settlement', 'Withdrawal', 'Refund', 'Adjustment', 'Subscription Payment']) &&
+             data.amountBDT is number && data.amountBDT >= 0 &&
+             (data.direction in ['credit', 'debit']) &&
+             data.description is string && data.description.size() <= 500 &&
+             (data.status in ['completed', 'pending', 'failed']) &&
+             data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    match /reseller_transactions/{transactionId} {
+      // Owner can read their transactions
+      allow read: if (isSignedIn() && resource.data.resellerId == request.auth.uid) || isAdmin();
+
+      // Transactions are immutable ledger records created by Admin or Trusted Server during settlement / payout
+      allow create: if isAdmin();
+
+      // Transactions are immutable ledger records
+      allow update, delete: if isAdmin();
+    }
+
+    // ==========================================
+    // RESELLER WITHDRAWALS
+    // ==========================================
+    function isValidWithdrawalRequest(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.resellerId is string && data.resellerId.size() <= 128 &&
+             data.amountBDT is number && data.amountBDT >= 500 &&
+             (data.method in ['bKash', 'Nagad', 'Bank Account']) &&
+             data.accountDetails is map &&
+             (data.status in ['Pending', 'Approved', 'Processing', 'Completed', 'Rejected']) &&
+             data.requestedAt is string && data.requestedAt.size() <= 64;
+    }
+
+    match /reseller_withdrawals/{withdrawalId} {
+      // Owner can read their withdrawal requests
+      allow read: if (isSignedIn() && resource.data.resellerId == request.auth.uid) || isAdmin();
+
+      // Reseller can submit withdrawal request (must start as Pending, minimum BDT 500, no processedAt)
+      allow create: if isSignedIn() &&
+                       isValidId(withdrawalId) &&
+                       incoming().id == withdrawalId &&
+                       incoming().resellerId == request.auth.uid &&
+                       incoming().status == 'Pending' &&
+                       incoming().amountBDT >= 500 &&
+                       (!('processedAt' in incoming()) || incoming().processedAt == null) &&
+                       isValidWithdrawalRequest(incoming());
+
+      // Only admin can approve, reject, or mark withdrawal as completed
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // RESELLER SUBSCRIPTIONS
+    // ==========================================
+    function isValidResellerSubscription(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.resellerId is string && data.resellerId.size() <= 128 &&
+             (data.plan in ['starter', 'pro', 'elite']) &&
+             data.planName is string && data.planName.size() <= 100 &&
+             data.priceBDT is number && data.priceBDT >= 0 &&
+             (data.billingCycle in ['forever', 'monthly']) &&
+             (data.status in ['active', 'expired', 'pending_payment', 'cancelled']) &&
+             data.startDate is string && data.startDate.size() <= 64;
+    }
+
+    match /reseller_subscriptions/{subscriptionId} {
+      allow read: if (isSignedIn() && resource.data.resellerId == request.auth.uid) || isAdmin();
+
+      // Normal reseller can only initialize the free 'starter' plan as active,
+      // or request a paid plan ('pro' or 'elite') in 'pending_payment' status.
+      // Paid subscriptions can ONLY be activated by Admin / Trusted Server upon payment verification.
+      allow create: if isSignedIn() &&
+                       isValidId(subscriptionId) &&
+                       incoming().id == subscriptionId &&
+                       incoming().resellerId == request.auth.uid &&
+                       isValidResellerSubscription(incoming()) &&
+                       (
+                         (incoming().plan == 'starter' && incoming().priceBDT == 0 && incoming().status == 'active') ||
+                         (incoming().plan in ['pro', 'elite'] && incoming().status == 'pending_payment') ||
+                         isAdmin()
+                       );
+
+      // Reseller can only request upgrade into 'pending_payment' status or revert to 'starter'.
+      // Reseller cannot self-activate paid plans or extend expiry dates!
+      allow update: if (isSignedIn() && existing().resellerId == request.auth.uid &&
+                        incoming().id == existing().id &&
+                        incoming().resellerId == existing().resellerId &&
+                        isValidResellerSubscription(incoming()) &&
+                        (
+                          (incoming().plan == 'starter' && incoming().priceBDT == 0 && incoming().status == 'active') ||
+                          (incoming().plan in ['pro', 'elite'] && incoming().status == 'pending_payment')
+                        )) ||
+                       isAdmin();
+
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // RESELLER NOTIFICATIONS
+    // ==========================================
+    match /reseller_notifications/{notifId} {
+      allow read: if (isSignedIn() && resource.data.resellerId == request.auth.uid) || isAdmin();
+
+      // System or order events can create notifications for the reseller
+      allow create: if isSignedIn() || (!isSignedIn() && incoming().resellerId is string);
+
+      // Reseller can mark their notification as read
+      allow update: if (isSignedIn() && existing().resellerId == request.auth.uid) || isAdmin();
+
+      allow delete: if (isSignedIn() && existing().resellerId == request.auth.uid) || isAdmin();
+    }
+
+    // ==========================================
+    // ADMIN AUDIT LOGS & PLATFORM NOTIFICATIONS
+    // ==========================================
+    match /admin_audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false; // Immutable audit trail
+    }
+
+    match /admin_notifications/{notifId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // ==========================================
+    // PHASE 5: PAYMENTS & FINANCIAL SETTLEMENTS
+    // ==========================================
+    match /payments/{paymentId} {
+      allow read: if (isSignedIn() && (
+        (resource.data.customerId != null && resource.data.customerId == request.auth.uid) ||
+        (resource.data.resellerId != null && resource.data.resellerId == request.auth.uid) ||
+        isAdmin()
+      )) || (!isSignedIn()); // Allow guest checkout order payment query
+      allow create, update: if isAdmin();
+      allow delete: if false; // Immutable payment audit log
+    }
+
+    match /settlements/{settlementId} {
+      allow read: if (isSignedIn() && resource.data.resellerId == request.auth.uid) || isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false; // Immutable financial ledger settlement
+    }
+
+    match /courier_shipments/{shipmentId} {
+      allow read: if isSignedIn() || (!isSignedIn()); // Allow tracking by public tracking ID
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /processed_events/{eventId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /backend_jobs/{jobId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ==========================================
+    // PLATFORM SETTINGS & SUBSCRIPTION PLANS
+    // ==========================================
+    match /platform_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /subscription_plans/{planId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // RESELLER APPLICATIONS
+    // ==========================================
+    match /reseller_applications/{applicationId} {
+      allow read: if isSignedIn();
+      
+      allow create: if isSignedIn() &&
+                       isValidId(applicationId) &&
+                       (incoming().userId == request.auth.uid || incoming().uid == request.auth.uid) &&
+                       incoming().status == 'pending' &&
+                       isValidResellerApplication(incoming());
+
+      allow update: if isSignedIn() && isValidId(applicationId) && (
+                       // Applicant can update their pending application
+                       (((existing().userId == request.auth.uid || existing().uid == request.auth.uid) && 
+                         incoming().status == 'pending' &&
+                         isValidResellerApplication(incoming()))) ||
+                       // Admin can approve/reject
+                       isAdmin()
+                     );
+
+      allow delete: if isAdmin();
+    }
+
+  }
+}

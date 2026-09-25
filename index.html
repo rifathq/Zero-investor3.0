@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script>
+      (function() {
+        const origDefineProperty = Object.defineProperty;
+        Object.defineProperty = function(obj, prop, descriptor) {
+          if (obj === window && prop === 'fetch') {
+            let currentFetch = descriptor.get ? descriptor.get() : descriptor.value;
+            return origDefineProperty.call(this, obj, prop, {
+              configurable: true,
+              enumerable: true,
+              get: function() {
+                return currentFetch;
+              },
+              set: function(val) {
+                currentFetch = val;
+              }
+            });
+          }
+          return origDefineProperty.apply(this, arguments);
+        };
+      })();
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Remix  - Multi-Vendor Marketplace</title>
+    <meta name="description" content="Premium multi-vendor e-commerce marketplace empowering small businesses, independent sellers, and customers with seamless shopping, storefronts, and management." />
+    <meta property="og:title" content="Remix  - Multi-Vendor Marketplace" />
+    <meta property="og:description" content="Premium multi-vendor e-commerce marketplace empowering small businesses, independent sellers, and customers with seamless shopping, storefronts, and management." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

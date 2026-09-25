@@ -1,0 +1,1098 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with role-based access control and contact information",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier matching the Firebase Auth UID",
+          "maxLength": 128
+        },
+        "firebaseUid": {
+          "type": "string",
+          "description": "Firebase Auth UID",
+          "maxLength": 128
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of user",
+          "maxLength": 100
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of user",
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address of user",
+          "maxLength": 254
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number with country code",
+          "maxLength": 30
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "URL of avatar image",
+          "maxLength": 1024
+        },
+        "role": {
+          "type": "string",
+          "description": "Role of the user: customer, seller, reseller, or admin",
+          "enum": ["customer", "seller", "reseller", "admin"]
+        },
+        "emailVerified": {
+          "type": "boolean",
+          "description": "Whether the user email is verified"
+        },
+        "phoneVerified": {
+          "type": "boolean",
+          "description": "Whether the user phone is verified"
+        },
+        "status": {
+          "type": "string",
+          "description": "Account status",
+          "enum": ["active", "suspended", "pending"]
+        },
+        "linkedProviders": {
+          "type": "array",
+          "description": "List of linked authentication provider IDs"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 update timestamp"
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 last login timestamp"
+        }
+      },
+      "required": ["id", "firebaseUid", "email", "role", "status", "createdAt"]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Trusted administrative user lookup",
+      "type": "object",
+      "properties": {
+        "adminUid": {
+          "type": "string",
+          "description": "Admin UID",
+          "maxLength": 128
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Admin email",
+          "maxLength": 254
+        },
+        "assignedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when admin role was granted"
+        }
+      },
+      "required": ["adminUid", "email"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Platform catalog category for organizing products and driving marketplace storefront navigation",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the category",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "description": "Category display name",
+          "maxLength": 100
+        },
+        "slug": {
+          "type": "string",
+          "description": "URL slug for category navigation",
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional category summary description",
+          "maxLength": 500
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "Public URL or data URI of the 1:1 category banner photo",
+          "maxLength": 500000
+        },
+        "icon": {
+          "type": "string",
+          "description": "Optional icon identifier",
+          "maxLength": 50
+        },
+        "status": {
+          "type": "string",
+          "description": "Visibility state of category: active or hidden",
+          "enum": ["active", "hidden"]
+        },
+        "isFeatured": {
+          "type": "boolean",
+          "description": "Whether the category is pinned to the homepage carousel"
+        },
+        "sortOrder": {
+          "type": "number",
+          "description": "Numeric sequence priority for ordering categories"
+        },
+        "parentId": {
+          "type": "string",
+          "description": "ID of parent category if this is a subcategory",
+          "maxLength": 128
+        },
+        "productCount": {
+          "type": "number",
+          "description": "Cached or computed count of active catalog products in this category"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last modification timestamp"
+        }
+      },
+      "required": ["id", "name", "slug"]
+    },
+    "ProductReview": {
+      "title": "ProductReview",
+      "description": "Customer product reviews with star ratings and verified purchase linkage",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the review",
+          "maxLength": 128
+        },
+        "productId": {
+          "type": "string",
+          "description": "ID of the reviewed product",
+          "maxLength": 128
+        },
+        "author": {
+          "type": "string",
+          "description": "Display name of reviewer",
+          "maxLength": 100
+        },
+        "rating": {
+          "type": "number",
+          "description": "Star rating between 1 and 5",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "title": {
+          "type": "string",
+          "description": "Review headline or title",
+          "maxLength": 200
+        },
+        "comment": {
+          "type": "string",
+          "description": "Full review text feedback",
+          "maxLength": 2000
+        },
+        "verifiedPurchase": {
+          "type": "boolean",
+          "description": "Whether the review is linked to an authenticated order"
+        },
+        "userId": {
+          "type": "string",
+          "description": "User ID of the reviewer",
+          "maxLength": 128
+        },
+        "orderNumber": {
+          "type": "string",
+          "description": "Associated order number verifying purchase",
+          "maxLength": 64
+        },
+        "helpfulCount": {
+          "type": "number",
+          "description": "Helpful upvote count"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 creation timestamp"
+        }
+      },
+      "required": ["id", "productId", "author", "rating", "title", "comment", "verifiedPurchase", "createdAt"]
+    },
+    "ResellerStore": {
+      "title": "ResellerStore",
+      "description": "Reseller storefront configuration and branding for multi-device public and private access",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the store",
+          "maxLength": 128
+        },
+        "resellerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the reseller owner",
+          "maxLength": 128
+        },
+        "storeName": {
+          "type": "string",
+          "description": "Public store name",
+          "maxLength": 100
+        },
+        "storeSlug": {
+          "type": "string",
+          "description": "Unique URL slug for public storefront routing",
+          "maxLength": 100
+        },
+        "logoUrl": {
+          "type": "string",
+          "description": "Store logo image URL",
+          "maxLength": 2048
+        },
+        "bannerUrl": {
+          "type": "string",
+          "description": "Store banner hero image URL",
+          "maxLength": 2048
+        },
+        "tagline": {
+          "type": "string",
+          "description": "Catchy store tagline",
+          "maxLength": 255
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed store description",
+          "maxLength": 3000
+        },
+        "contactNumber": {
+          "type": "string",
+          "description": "Contact phone or WhatsApp number",
+          "maxLength": 30
+        },
+        "brandColor": {
+          "type": "string",
+          "description": "Primary brand accent color hex code",
+          "maxLength": 16
+        },
+        "featuredProductIds": {
+          "type": "array",
+          "description": "List of featured reseller product IDs"
+        },
+        "announcementText": {
+          "type": "string",
+          "description": "Banner announcement text",
+          "maxLength": 500
+        },
+        "socialLinks": {
+          "type": "object",
+          "description": "Social media links"
+        },
+        "status": {
+          "type": "string",
+          "description": "Store status",
+          "enum": ["active", "suspended", "maintenance"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update timestamp"
+        }
+      },
+      "required": ["id", "resellerId", "storeName", "storeSlug", "updatedAt"]
+    },
+    "ResellerProduct": {
+      "title": "ResellerProduct",
+      "description": "Custom pricing and inventory for products added to a reseller's catalog",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique product ID in reseller catalog",
+          "maxLength": 128
+        },
+        "resellerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the reseller",
+          "maxLength": 128
+        },
+        "storeId": {
+          "type": "string",
+          "description": "ID of the associated reseller store",
+          "maxLength": 128
+        },
+        "originalProductId": {
+          "type": "string",
+          "description": "Source supplier product ID from marketplace catalog",
+          "maxLength": 128
+        },
+        "productName": {
+          "type": "string",
+          "description": "Product title",
+          "maxLength": 200
+        },
+        "category": {
+          "type": "string",
+          "description": "Product category",
+          "maxLength": 100
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "Primary image URL",
+          "maxLength": 2048
+        },
+        "additionalImages": {
+          "type": "array",
+          "description": "Gallery images"
+        },
+        "supplierPriceBDT": {
+          "type": "number",
+          "description": "Wholesale supplier base price in BDT",
+          "minimum": 0
+        },
+        "sellingPriceBDT": {
+          "type": "number",
+          "description": "Reseller retail price in BDT",
+          "minimum": 0
+        },
+        "profitMarginBDT": {
+          "type": "number",
+          "description": "Profit margin per unit in BDT",
+          "minimum": 0
+        },
+        "originalMrpBDT": {
+          "type": "number",
+          "description": "Strikethrough MRP price for discount display",
+          "minimum": 0
+        },
+        "inStock": {
+          "type": "boolean",
+          "description": "Whether the product is currently in stock"
+        },
+        "stockCount": {
+          "type": "number",
+          "description": "Available inventory count",
+          "minimum": 0
+        },
+        "customDescription": {
+          "type": "string",
+          "description": "Custom marketing description written by reseller",
+          "maxLength": 5000
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether product is active on public storefront"
+        },
+        "salesCount": {
+          "type": "number",
+          "description": "Total units sold",
+          "minimum": 0
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update timestamp"
+        }
+      },
+      "required": ["id", "resellerId", "originalProductId", "productName", "supplierPriceBDT", "sellingPriceBDT", "createdAt"]
+    },
+    "ResellerLandingPage": {
+      "title": "ResellerLandingPage",
+      "description": "High-converting single product landing page configuration for marketing campaigns",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Landing page ID",
+          "maxLength": 128
+        },
+        "resellerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the reseller",
+          "maxLength": 128
+        },
+        "storeSlug": {
+          "type": "string",
+          "description": "Store slug for routing",
+          "maxLength": 100
+        },
+        "productSlug": {
+          "type": "string",
+          "description": "Product slug for public landing URL: /r/{storeSlug}/{productSlug}",
+          "maxLength": 100
+        },
+        "productId": {
+          "type": "string",
+          "description": "Base product ID",
+          "maxLength": 128
+        },
+        "resellerProductId": {
+          "type": "string",
+          "description": "Associated reseller product ID",
+          "maxLength": 128
+        },
+        "title": {
+          "type": "string",
+          "description": "Landing page title",
+          "maxLength": 255
+        },
+        "headline": {
+          "type": "string",
+          "description": "Catchy promotional headline",
+          "maxLength": 300
+        },
+        "sellingPriceBDT": {
+          "type": "number",
+          "description": "Offer selling price in BDT",
+          "minimum": 0
+        },
+        "discountPriceBDT": {
+          "type": "number",
+          "description": "Original MRP discount price in BDT",
+          "minimum": 0
+        },
+        "productImages": {
+          "type": "array",
+          "description": "Product showcase images"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed offer description",
+          "maxLength": 5000
+        },
+        "features": {
+          "type": "array",
+          "description": "Bullet-point product features"
+        },
+        "benefits": {
+          "type": "array",
+          "description": "Bullet-point customer benefits"
+        },
+        "customerReviews": {
+          "type": "array",
+          "description": "Customer testimonials"
+        },
+        "viewsCount": {
+          "type": "number",
+          "description": "Total landing page views",
+          "minimum": 0
+        },
+        "ordersCount": {
+          "type": "number",
+          "description": "Total landing page orders",
+          "minimum": 0
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the landing page",
+          "enum": ["draft", "published", "archived"]
+        },
+        "enableCOD": {
+          "type": "boolean",
+          "description": "Whether Cash on Delivery is enabled"
+        },
+        "deliveryChargeInsideDhakaBDT": {
+          "type": "number",
+          "description": "Delivery charge inside Dhaka in BDT",
+          "minimum": 0
+        },
+        "deliveryChargeOutsideDhakaBDT": {
+          "type": "number",
+          "description": "Delivery charge outside Dhaka in BDT",
+          "minimum": 0
+        },
+        "badgeText": {
+          "type": "string",
+          "description": "Promotional badge text",
+          "maxLength": 100
+        },
+        "urgencyTimerHours": {
+          "type": "number",
+          "description": "Countdown timer in hours",
+          "minimum": 0
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update timestamp"
+        }
+      },
+      "required": ["id", "resellerId", "storeSlug", "productSlug", "title", "sellingPriceBDT", "status", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Multi-vendor and reseller customer order with status tracking and settlement",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Order document ID",
+          "maxLength": 128
+        },
+        "orderNumber": {
+          "type": "string",
+          "description": "Human-readable order tracking number",
+          "maxLength": 64
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Firebase Auth UID or guest customer ID",
+          "maxLength": 128
+        },
+        "customerName": {
+          "type": "string",
+          "description": "Full name of customer",
+          "maxLength": 150
+        },
+        "customerEmail": {
+          "type": "string",
+          "description": "Customer contact email",
+          "maxLength": 254
+        },
+        "customerPhone": {
+          "type": "string",
+          "description": "Customer contact phone number",
+          "maxLength": 30
+        },
+        "customerAddress": {
+          "type": "string",
+          "description": "Full street delivery address",
+          "maxLength": 500
+        },
+        "customerCity": {
+          "type": "string",
+          "description": "City or district (e.g. Dhaka, Chittagong)",
+          "maxLength": 100
+        },
+        "resellerId": {
+          "type": "string",
+          "description": "Associated reseller ID if placed through reseller storefront/landing page",
+          "maxLength": 128
+        },
+        "storeSlug": {
+          "type": "string",
+          "description": "Reseller store slug",
+          "maxLength": 100
+        },
+        "landingPageId": {
+          "type": "string",
+          "description": "Associated landing page ID if placed via 1-click landing page",
+          "maxLength": 128
+        },
+        "deliveryZone": {
+          "type": "string",
+          "description": "Delivery zone: inside_dhaka or outside_dhaka",
+          "maxLength": 50
+        },
+        "deliveryFeeBDT": {
+          "type": "number",
+          "description": "Delivery shipping fee in BDT",
+          "minimum": 0
+        },
+        "items": {
+          "type": "array",
+          "description": "List of ordered products, quantities, prices, and profits"
+        },
+        "totalAmountBDT": {
+          "type": "number",
+          "description": "Grand total payable amount in BDT",
+          "minimum": 0
+        },
+        "estimatedProfitBDT": {
+          "type": "number",
+          "description": "Reseller estimated profit margin in BDT",
+          "minimum": 0
+        },
+        "status": {
+          "type": "string",
+          "description": "Order lifecycle status",
+          "enum": ["Pending", "Confirmed", "Processing", "Shipped", "Delivered", "Cancelled", "Returned"]
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Payment method: Cash on Delivery (COD), bKash, Nagad, etc.",
+          "maxLength": 100
+        },
+        "trackingCode": {
+          "type": "string",
+          "description": "Courier parcel tracking code",
+          "maxLength": 100
+        },
+        "courierName": {
+          "type": "string",
+          "description": "Courier company name",
+          "maxLength": 100
+        },
+        "notes": {
+          "type": "string",
+          "description": "Order delivery notes or instructions",
+          "maxLength": 1000
+        },
+        "isSettled": {
+          "type": "boolean",
+          "description": "Whether the reseller profit has been settled upon delivery"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update timestamp"
+        }
+      },
+      "required": ["id", "orderNumber", "customerName", "customerPhone", "items", "totalAmountBDT", "status", "paymentMethod", "createdAt"]
+    },
+    "ResellerWallet": {
+      "title": "ResellerWallet",
+      "description": "Reseller wallet balance and earnings summary",
+      "type": "object",
+      "properties": {
+        "resellerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of reseller",
+          "maxLength": 128
+        },
+        "availableBalanceBDT": {
+          "type": "number",
+          "description": "Settled and withdrawable balance in BDT",
+          "minimum": 0
+        },
+        "pendingBalanceBDT": {
+          "type": "number",
+          "description": "Pending earnings from in-transit orders in BDT",
+          "minimum": 0
+        },
+        "totalEarningsBDT": {
+          "type": "number",
+          "description": "Cumulative lifetime earnings in BDT",
+          "minimum": 0
+        },
+        "totalWithdrawnBDT": {
+          "type": "number",
+          "description": "Cumulative lifetime withdrawals in BDT",
+          "minimum": 0
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update timestamp"
+        }
+      },
+      "required": ["resellerId", "availableBalanceBDT", "pendingBalanceBDT", "totalEarningsBDT", "totalWithdrawnBDT", "updatedAt"]
+    },
+    "WalletTransaction": {
+      "title": "WalletTransaction",
+      "description": "Immutable ledger record for wallet credits, debits, and adjustments",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Transaction ID",
+          "maxLength": 128
+        },
+        "resellerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of reseller",
+          "maxLength": 128
+        },
+        "type": {
+          "type": "string",
+          "description": "Transaction category",
+          "enum": ["Product Profit", "Order Settlement", "Withdrawal", "Refund", "Adjustment", "Subscription Payment"]
+        },
+        "amountBDT": {
+          "type": "number",
+          "description": "Amount in BDT",
+          "minimum": 0
+        },
+        "direction": {
+          "type": "string",
+          "description": "credit or debit",
+          "enum": ["credit", "debit"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Transaction explanation",
+          "maxLength": 500
+        },
+        "referenceId": {
+          "type": "string",
+          "description": "Order or withdrawal reference code",
+          "maxLength": 128
+        },
+        "status": {
+          "type": "string",
+          "description": "Transaction status",
+          "enum": ["completed", "pending", "failed"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["id", "resellerId", "type", "amountBDT", "direction", "description", "status", "createdAt"]
+    },
+    "WithdrawalRequest": {
+      "title": "WithdrawalRequest",
+      "description": "Payout request submitted by reseller for mobile banking or bank transfer",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Withdrawal request ID",
+          "maxLength": 128
+        },
+        "resellerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of reseller",
+          "maxLength": 128
+        },
+        "amountBDT": {
+          "type": "number",
+          "description": "Requested withdrawal amount in BDT",
+          "minimum": 500
+        },
+        "method": {
+          "type": "string",
+          "description": "Payout method: bKash, Nagad, or Bank Account",
+          "enum": ["bKash", "Nagad", "Bank Account"]
+        },
+        "accountDetails": {
+          "type": "object",
+          "description": "Account number, holder name, or bank details"
+        },
+        "status": {
+          "type": "string",
+          "description": "Withdrawal lifecycle status",
+          "enum": ["Pending", "Approved", "Processing", "Completed", "Rejected"]
+        },
+        "requestedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Submission timestamp"
+        },
+        "processedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Processing completion timestamp"
+        },
+        "adminNotes": {
+          "type": "string",
+          "description": "Admin notes",
+          "maxLength": 500
+        }
+      },
+      "required": ["id", "resellerId", "amountBDT", "method", "accountDetails", "status", "requestedAt"]
+    },
+    "ResellerSubscription": {
+      "title": "ResellerSubscription",
+      "description": "Reseller plan membership and quota tier",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Subscription ID",
+          "maxLength": 128
+        },
+        "resellerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of reseller",
+          "maxLength": 128
+        },
+        "plan": {
+          "type": "string",
+          "description": "Plan key: starter, pro, or elite",
+          "enum": ["starter", "pro", "elite"]
+        },
+        "planName": {
+          "type": "string",
+          "description": "Plan display name",
+          "maxLength": 100
+        },
+        "priceBDT": {
+          "type": "number",
+          "description": "Plan cost in BDT",
+          "minimum": 0
+        },
+        "billingCycle": {
+          "type": "string",
+          "description": "Billing cadence",
+          "enum": ["forever", "monthly"]
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Start timestamp"
+        },
+        "expiryDate": {
+          "type": "string",
+          "description": "Expiry timestamp or null for lifetime"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of subscription",
+          "enum": ["active", "expired", "pending_payment", "cancelled"]
+        },
+        "landingPageLimit": {
+          "type": "number",
+          "description": "Allowed published landing pages quota",
+          "minimum": 1
+        },
+        "productLimit": {
+          "type": "number",
+          "description": "Allowed products quota",
+          "minimum": 1
+        },
+        "prioritySupport": {
+          "type": "boolean",
+          "description": "Whether priority VIP support is included"
+        },
+        "customBranding": {
+          "type": "boolean",
+          "description": "Whether custom branding is unlocked"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Payment method used",
+          "maxLength": 50
+        },
+        "paymentTrxId": {
+          "type": "string",
+          "description": "Payment transaction reference",
+          "maxLength": 100
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update timestamp"
+        }
+      },
+      "required": ["id", "resellerId", "plan", "planName", "priceBDT", "billingCycle", "startDate", "status"]
+    },
+    "PlatformProduct": {
+      "title": "PlatformProduct",
+      "description": "Platform-wide master product catalog managed exclusively by administrators",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique product ID",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "description": "Product title",
+          "maxLength": 200
+        },
+        "category": {
+          "type": "string",
+          "description": "Product category",
+          "maxLength": 100
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "Admin master product image",
+          "maxLength": 2048
+        },
+        "supplierPrice": {
+          "type": "number",
+          "description": "Admin-controlled wholesale base cost in BDT",
+          "minimum": 0
+        },
+        "suggestedPrice": {
+          "type": "number",
+          "description": "Suggested default retail price in BDT",
+          "minimum": 0
+        },
+        "description": {
+          "type": "string",
+          "description": "Master product description",
+          "maxLength": 5000
+        },
+        "stockCount": {
+          "type": "number",
+          "description": "Available stock count",
+          "minimum": 0
+        },
+        "inStock": {
+          "type": "boolean",
+          "description": "Whether in stock"
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether active on platform"
+        }
+      },
+      "required": ["id", "name", "category", "imageUrl", "supplierPrice", "suggestedPrice"]
+    },
+    "ResellerApplication": {
+      "title": "ResellerApplication",
+      "description": "Application submitted by a user for reseller verification and wholesale pricing access",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for application matching user uid",
+          "maxLength": 128
+        },
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of applicant",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of applicant",
+          "maxLength": 150
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address of applicant",
+          "maxLength": 254
+        },
+        "whatsapp": {
+          "type": "string",
+          "description": "WhatsApp contact number (11 digits)",
+          "maxLength": 30
+        },
+        "salesChannel": {
+          "type": "string",
+          "description": "Primary sales channel (e.g. Facebook Page, TikTok Shop, etc.)",
+          "maxLength": 100
+        },
+        "pageUrl": {
+          "type": "string",
+          "description": "Link to sales presence/page",
+          "maxLength": 500
+        },
+        "estimatedVolume": {
+          "type": "string",
+          "description": "Estimated monthly order volume",
+          "maxLength": 100
+        },
+        "district": {
+          "type": "string",
+          "description": "District or location in Bangladesh",
+          "maxLength": 100
+        },
+        "status": {
+          "type": "string",
+          "description": "Verification status",
+          "enum": ["pending", "approved", "rejected"]
+        },
+        "appliedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when application was submitted"
+        },
+        "reviewedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when reviewed by admin"
+        },
+        "reviewedBy": {
+          "type": "string",
+          "description": "Admin UID or email who reviewed application",
+          "maxLength": 128
+        }
+      },
+      "required": ["uid", "name", "whatsapp", "salesChannel", "pageUrl", "estimatedVolume", "district", "status"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "PlatformProduct",
+      "description": "Master platform product catalog with admin-controlled base costs, images, and descriptions"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Profiles for registered customers, sellers, and administrators"
+    },
+    "/admins/{adminId}": {
+      "schema": "AdminRecord",
+      "description": "White-listed administrator documents used for secure server-side role validation"
+    },
+    "/reviews/{reviewId}": {
+      "schema": "ProductReview",
+      "description": "Customer product reviews with star ratings and verified purchase validation"
+    },
+    "/reseller_stores/{storeId}": {
+      "schema": "ResellerStore",
+      "description": "Reseller storefront configuration and branding for multi-device public and private access"
+    },
+    "/reseller_products/{productId}": {
+      "schema": "ResellerProduct",
+      "description": "Products curated into reseller inventory with custom retail pricing and profit margins"
+    },
+    "/reseller_landing_pages/{landingPageId}": {
+      "schema": "ResellerLandingPage",
+      "description": "Conversion-focused single product landing pages accessible via /r/{storeSlug}/{productSlug}"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Real Firestore order records placed by customers on marketplace or reseller landing pages"
+    },
+    "/reseller_wallets/{resellerId}": {
+      "schema": "ResellerWallet",
+      "description": "Reseller wallet balance with available and pending profit balances"
+    },
+    "/reseller_transactions/{transactionId}": {
+      "schema": "WalletTransaction",
+      "description": "Auditable transaction ledger for reseller earnings, settlements, and withdrawals"
+    },
+    "/reseller_withdrawals/{withdrawalId}": {
+      "schema": "WithdrawalRequest",
+      "description": "Reseller payout requests for bKash, Nagad, and Bank Account transfer"
+    },
+    "/reseller_subscriptions/{subscriptionId}": {
+      "schema": "ResellerSubscription",
+      "description": "Active subscription memberships and plan limits for resellers"
+    },
+    "/reseller_applications/{applicationId}": {
+      "schema": "ResellerApplication",
+      "description": "Verification applications submitted by users seeking reseller authorization and wholesale pricing"
+    }
+  }
+}
