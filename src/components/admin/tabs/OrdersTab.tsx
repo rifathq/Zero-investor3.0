@@ -41,7 +41,9 @@ import {
   Ban,
   Download,
   FileSpreadsheet,
-  RotateCcw
+  RotateCcw,
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { AdminPageHeader } from '../common/AdminPageHeader';
 import { StatusBadge } from '../common/StatusBadge';
@@ -74,7 +76,7 @@ function getWhatsAppLink(phone?: string, text?: string): string {
 }
 
 export function OrdersTab() {
-  const { orders = [], isLoadingOrders, updateOrderStatus, isSubmitting, resellers = [] } = useAdmin();
+  const { orders = [], isLoadingOrders, updateOrderStatus, deleteOrder, isSubmitting, resellers = [] } = useAdmin();
   const { showToast } = useMarketplace();
 
   // Sub-tab view: Master Orders Feed vs Store Breakdown
@@ -93,6 +95,10 @@ export function OrdersTab() {
   const [modalTracking, setModalTracking] = useState<string>('');
   const [modalNotes, setModalNotes] = useState<string>('');
 
+  // Delete Confirmation Modal State
+  const [orderToDelete, setOrderToDelete] = useState<Order | any | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 8;
@@ -110,6 +116,19 @@ export function OrdersTab() {
     if (!selectedOrder) return;
     await updateOrderStatus(selectedOrder.id, modalStatus, modalCourier, modalTracking, modalNotes);
     setSelectedOrder(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!orderToDelete) return;
+    setIsDeleting(true);
+    try {
+      const success = await deleteOrder(orderToDelete.id);
+      if (success) {
+        setOrderToDelete(null);
+      }
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Dynamic Store Breakdown calculation
@@ -898,14 +917,26 @@ export function OrdersTab() {
 
                           {/* Action */}
                           <td className="py-4 pr-6 pl-3 text-right">
-                            <button
-                              type="button"
-                              onClick={() => openOrderModal(order)}
-                              className="px-3 py-1.5 rounded-xl border border-neutral-300 hover:border-black bg-white hover:bg-neutral-50 text-xs font-semibold text-neutral-800 transition-colors shadow-2xs cursor-pointer inline-flex items-center gap-1.5"
-                            >
-                              <Eye className="w-3.5 h-3.5 text-neutral-600" />
-                              <span>Fulfill</span>
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => openOrderModal(order)}
+                                className="px-3 py-1.5 rounded-xl border border-neutral-300 hover:border-black bg-white hover:bg-neutral-50 text-xs font-semibold text-neutral-800 transition-colors shadow-2xs cursor-pointer inline-flex items-center gap-1.5"
+                                title="Fulfill and update order"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-neutral-600" />
+                                <span>Fulfill</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setOrderToDelete(order)}
+                                className="p-1.5 rounded-xl border border-rose-200 hover:border-rose-400 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 transition-colors shadow-2xs cursor-pointer inline-flex items-center justify-center group"
+                                title={`Delete Order #${order.orderNumber || order.id?.substring(0, 8)}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1142,6 +1173,75 @@ export function OrdersTab() {
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          DELETE ORDER CONFIRMATION MODAL
+         ========================================================================= */}
+      {orderToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-neutral-200 animate-in zoom-in-95 duration-150 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-neutral-900">
+                  Delete Order #{orderToDelete.orderNumber || orderToDelete.id?.substring(0, 8)}?
+                </h3>
+                <p className="text-xs text-neutral-600 leading-relaxed">
+                  Are you sure you want to delete this order? This action cannot be undone and will permanently remove the order record from the system.
+                </p>
+              </div>
+            </div>
+
+            {/* Order summary info snippet */}
+            <div className="p-3 rounded-2xl bg-neutral-50 border border-neutral-200/80 text-xs space-y-1.5 font-medium text-neutral-700">
+              <div className="flex justify-between">
+                <span className="text-neutral-500">Customer:</span>
+                <span className="font-semibold text-neutral-900">{orderToDelete.customerName || 'Customer'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-500">Total Amount:</span>
+                <span className="font-mono font-bold text-neutral-900">{formatBDT(orderToDelete.total || orderToDelete.totalAmountBDT || 0)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-500">Current Status:</span>
+                <span className="font-semibold text-neutral-900">{orderToDelete.status || 'Pending'}</span>
+              </div>
+            </div>
+
+            {/* Modal actions */}
+            <div className="pt-2 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setOrderToDelete(null)}
+                disabled={isDeleting}
+                className="px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-neutral-300 text-neutral-700 hover:bg-neutral-100 cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-5 py-2 text-xs sm:text-sm font-bold rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-xs cursor-pointer inline-flex items-center gap-2 disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Confirm Delete</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

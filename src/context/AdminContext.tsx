@@ -7,6 +7,7 @@ import {
   doc, 
   getDoc, 
   updateDoc, 
+  deleteDoc,
   setDoc,
   addDoc, 
   query, 
@@ -69,6 +70,7 @@ interface AdminContextType {
     param4?: string, 
     param5?: string
   ) => Promise<boolean>;
+  deleteOrder: (orderId: string) => Promise<boolean>;
 
   resellers: (ResellerStore & any)[];
   isLoadingResellers: boolean;
@@ -731,6 +733,33 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       console.error('[AdminContext] updateOrderStatus error:', err);
       showToast('Error', 'Failed to update order status', 'error');
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const deleteOrder = async (orderId: string): Promise<boolean> => {
+    setIsSubmitting(true);
+    try {
+      // 1. Remove from local state and storage
+      setOrders(prev => {
+        const updated = prev.filter(o => o.id !== orderId);
+        saveLocal('zero_invest_admin_orders', updated);
+        return updated;
+      });
+
+      // 2. Remove from Firestore if configured
+      if (isFirebaseConfigured && db) {
+        await deleteDoc(doc(db, 'orders', orderId));
+      }
+
+      await logAdminAction('DELETE_ORDER', `Permanently deleted Order #${orderId}`, orderId, 'order');
+      showToast('Order Deleted', 'Order deleted successfully', 'success');
+      return true;
+    } catch (err: any) {
+      console.error('[AdminContext] deleteOrder error:', err);
+      showToast('Error', err?.message || 'Failed to delete order. Please try again.', 'error');
       return false;
     } finally {
       setIsSubmitting(false);
@@ -1659,6 +1688,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     orders,
     isLoadingOrders,
     updateOrderStatus,
+    deleteOrder,
 
     resellers,
     isLoadingResellers,
